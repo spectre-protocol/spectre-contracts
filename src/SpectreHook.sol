@@ -79,6 +79,10 @@ contract SpectreHook is BaseHook {
 
     mapping(address => PendingSwap) private pendingSwaps;
 
+    /// @notice Stores the stealth address for the caller to route tokens to
+    /// @dev Set in afterSwap, read by caller, cleared after use
+    mapping(address => address) public stealthRecipient;
+
     /// @notice Total private swaps executed (for stats)
     uint256 public totalPrivateSwaps;
 
@@ -249,10 +253,21 @@ contract SpectreHook is BaseHook {
         // Clear pending swap data
         delete pendingSwaps[sender];
 
-        // Return zero delta for demo - funds go to sender normally
-        // In production, would integrate with PoolManager to redirect to stealthAddress
-        // The stealth address is announced via ERC-5564 for recipient to claim
+        // Store stealth address for caller to route tokens
+        // Caller must read this and send output tokens to stealthAddress
+        stealthRecipient[sender] = stealthAddress;
+
+        // Return zero delta - caller handles routing to stealth address
         return (this.afterSwap.selector, 0);
+    }
+
+    /// @notice Get and clear the stealth recipient for a sender
+    /// @dev Called by router/helper after swap to get where to send tokens
+    function consumeStealthRecipient(address sender) external returns (address recipient) {
+        recipient = stealthRecipient[sender];
+        if (recipient != address(0)) {
+            delete stealthRecipient[sender];
+        }
     }
 
     /*//////////////////////////////////////////////////////////////

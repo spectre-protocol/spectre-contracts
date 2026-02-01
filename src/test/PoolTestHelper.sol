@@ -10,6 +10,12 @@ import {ModifyLiquidityParams, SwapParams} from "v4-core/src/types/PoolOperation
 import {TickMath} from "v4-core/src/libraries/TickMath.sol";
 import {IUnlockCallback} from "v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
+
+/// @notice Interface for SpectreHook stealth recipient
+interface ISpectreHook {
+    function consumeStealthRecipient(address sender) external returns (address);
+}
 
 /// @title PoolTestHelper
 /// @notice Helper contract to interact with Uniswap v4 pools for testing
@@ -132,10 +138,54 @@ contract PoolTestHelper is IUnlockCallback {
             hookData
         );
 
-        // Settle tokens
-        _settleDeltas(key, delta, from);
+        // Check if hook set a stealth recipient for private swap
+        address stealthRecipient = address(0);
+        if (address(key.hooks) != address(0) && hookData.length > 0) {
+            // Try to get stealth recipient from hook
+            try ISpectreHook(address(key.hooks)).consumeStealthRecipient(address(this)) returns (address recipient) {
+                stealthRecipient = recipient;
+            } catch {}
+        }
+
+        // Settle tokens - route output to stealth address if set
+        _settlePrivateSwapDeltas(key, delta, from, stealthRecipient, zeroForOne);
 
         return abi.encode(delta);
+    }
+
+    function _settlePrivateSwapDeltas(
+        PoolKey memory key,
+        BalanceDelta delta,
+        address from,
+        address stealthRecipient,
+        bool zeroForOne
+    ) internal {
+        int128 delta0 = delta.amount0();
+        int128 delta1 = delta.amount1();
+
+        // Determine output currency based on swap direction
+        // zeroForOne: input is currency0, output is currency1
+        // !zeroForOne: input is currency1, output is currency0
+
+        // Settle currency0
+        if (delta0 < 0) {
+            // We owe the pool, transfer from user
+            _settle(key.currency0, from, uint128(-delta0));
+        } else if (delta0 > 0) {
+            // Pool owes us - route to stealth if this is the output and stealth is set
+            address recipient = (!zeroForOne && stealthRecipient != address(0)) ? stealthRecipient : from;
+            _take(key.currency0, recipient, uint128(delta0));
+        }
+
+        // Settle currency1
+        if (delta1 < 0) {
+            // We owe the pool, transfer from user
+            _settle(key.currency1, from, uint128(-delta1));
+        } else if (delta1 > 0) {
+            // Pool owes us - route to stealth if this is the output and stealth is set
+            address recipient = (zeroForOne && stealthRecipient != address(0)) ? stealthRecipient : from;
+            _take(key.currency1, recipient, uint128(delta1));
+        }
     }
 
     function _settleDeltas(PoolKey memory key, BalanceDelta delta, address from) internal {
