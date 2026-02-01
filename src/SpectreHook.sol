@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
+import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
@@ -9,6 +9,7 @@ import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
+import {SwapParams} from "v4-core/src/types/PoolOperation.sol";
 
 import {IRingVerifier} from "./interfaces/IRingVerifier.sol";
 import {IStealthAddressRegistry} from "./interfaces/IStealthAddressRegistry.sol";
@@ -125,15 +126,15 @@ contract SpectreHook is BaseHook {
 
     /// @notice Verifies ring signature before swap execution
     /// @dev Decodes hookData, verifies signature, stores pending swap data
-    function beforeSwap(
+    function _beforeSwap(
         address sender,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
+        SwapParams calldata params,
         bytes calldata hookData
-    ) external override returns (bytes4, BeforeSwapDelta, uint24) {
+    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         // If no hookData, this is a regular (non-private) swap
         if (hookData.length == 0) {
-            return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
         }
 
         // Decode hook data
@@ -185,7 +186,7 @@ contract SpectreHook is BaseHook {
             PoolId.unwrap(key.toId()), keyImage, ringMembers.length, block.timestamp
         );
 
-        return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -194,18 +195,18 @@ contract SpectreHook is BaseHook {
 
     /// @notice Routes swap output to stealth address
     /// @dev Generates stealth address, emits announcement, returns delta
-    function afterSwap(
+    function _afterSwap(
         address sender,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
+        SwapParams calldata params,
         BalanceDelta delta,
         bytes calldata /* hookData */
-    ) external override returns (bytes4, int128) {
+    ) internal override returns (bytes4, int128) {
         PendingSwap storage pending = pendingSwaps[sender];
 
         // If no pending private swap, return zero delta (regular swap)
         if (!pending.initialized) {
-            return (BaseHook.afterSwap.selector, 0);
+            return (this.afterSwap.selector, 0);
         }
 
         // Generate one-time stealth address
@@ -250,7 +251,7 @@ contract SpectreHook is BaseHook {
 
         // Return delta to redirect funds to stealth address
         // Note: In production, this would integrate with PoolManager's settlement
-        return (BaseHook.afterSwap.selector, outputAmount);
+        return (this.afterSwap.selector, outputAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
