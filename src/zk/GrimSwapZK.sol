@@ -160,19 +160,21 @@ contract GrimSwapZK is BaseHook {
             uint256[8] memory pubSignals
         ) = abi.decode(hookData, (uint256[2], uint256[2][2], uint256[2], uint256[8]));
 
-        // Extract public signals
-        // pubSignals[0] = merkleRoot
-        // pubSignals[1] = nullifierHash
-        // pubSignals[2] = recipient
-        // pubSignals[3] = relayer
-        // pubSignals[4] = relayerFee
-        // pubSignals[5] = swapAmountOut
+        // Extract public signals (snarkjs outputs first, then inputs)
+        // pubSignals[0] = computedCommitment (circuit output)
+        // pubSignals[1] = computedNullifierHash (circuit output)
+        // pubSignals[2] = merkleRoot (circuit input)
+        // pubSignals[3] = nullifierHash (circuit input)
+        // pubSignals[4] = recipient (circuit input)
+        // pubSignals[5] = relayer (circuit input)
+        // pubSignals[6] = relayerFee (circuit input)
+        // pubSignals[7] = swapAmountOut (circuit input)
 
-        bytes32 merkleRoot = bytes32(pubSignals[0]);
-        bytes32 nullifierHash = bytes32(pubSignals[1]);
-        address recipient = address(uint160(pubSignals[2]));
-        address relayer = address(uint160(pubSignals[3]));
-        uint256 relayerFee = pubSignals[4];
+        bytes32 merkleRoot = bytes32(pubSignals[2]);
+        bytes32 nullifierHash = bytes32(pubSignals[3]);
+        address recipient = address(uint160(pubSignals[4]));
+        address relayer = address(uint160(pubSignals[5]));
+        uint256 relayerFee = pubSignals[6];
 
         // Validate merkle root is known
         if (!grimPool.isKnownRoot(merkleRoot)) {

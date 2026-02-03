@@ -17,16 +17,16 @@ contract DeployGrimSwapZK is Script {
     // Unichain Sepolia PoolManager
     address constant POOL_MANAGER = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
 
-    // Deployed contracts
-    address constant GRIM_POOL = 0x0102Ba64Eefdbf362E402B9dCe0Cf9edfab611f5;
-    address constant GROTH16_VERIFIER = 0x2AAaCece42E8ec7C6066D547C81a9e7cF09dBaeA;
+    // Deployed contracts (final deployment with fixed signal indices)
+    address constant GRIM_POOL = 0xad079eAC28499c4eeA5C02D2DE1C81E56b9AA090;
+    address constant GROTH16_VERIFIER = 0xF7D14b744935cE34a210D7513471a8E6d6e696a0;
 
     // Pre-mined salt (from hook-mine-result.json)
     // Using CREATE2 deployer: 0x4e59b44847b379578588920cA78FbF26c0B4956C
-    bytes32 constant MINED_SALT = bytes32(uint256(2398));
+    bytes32 constant MINED_SALT = bytes32(uint256(15507));
 
     // Expected hook address
-    address constant EXPECTED_HOOK = 0x5a01290281688BC94cA0e0EA9b3Ea7E7f98d00c4;
+    address constant EXPECTED_HOOK = 0x95ED348fCC232FB040e46c77C60308517e4BC0C4;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

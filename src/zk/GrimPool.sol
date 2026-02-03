@@ -296,4 +296,15 @@ contract GrimPool is IGrimPool, ReentrancyGuard {
         if (msg.sender != owner) revert Unauthorized();
         owner = newOwner;
     }
+
+    /**
+     * @notice Add a known root (TESTNET ONLY - for Poseidon tree compatibility)
+     * @dev This allows adding Poseidon-based Merkle roots for ZK proofs
+     * @param root The Poseidon Merkle root to add
+     */
+    function addKnownRoot(bytes32 root) external {
+        if (msg.sender != owner) revert Unauthorized();
+        currentRootIndex = (currentRootIndex + 1) % ROOT_HISTORY_SIZE;
+        roots[currentRootIndex] = root;
+    }
 }
