@@ -64,6 +64,9 @@ contract GrimPool is IGrimPool, ReentrancyGuard {
     /// @notice Owner of the contract (for admin functions)
     address public owner;
 
+    /// @notice Authorized routers that can release deposited ETH for swaps
+    mapping(address => bool) public authorizedRouters;
+
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -94,6 +97,8 @@ contract GrimPool is IGrimPool, ReentrancyGuard {
     error InvalidRecipient();
     error Unauthorized();
     error AlreadyInitialized();
+    error InsufficientPoolBalance();
+    error TransferFailed();
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -275,6 +280,24 @@ contract GrimPool is IGrimPool, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
+                          ROUTER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Release deposited ETH for a private swap
+     * @dev Only callable by authorized routers or GrimSwapZK hook.
+     *      The caller must be an atomic contract that immediately swaps.
+     *      If the swap fails (invalid proof), the entire tx reverts.
+     * @param amount Amount of ETH to release
+     */
+    function releaseForSwap(uint256 amount) external {
+        if (!authorizedRouters[msg.sender] && msg.sender != grimSwapZK) revert Unauthorized();
+        if (address(this).balance < amount) revert InsufficientPoolBalance();
+        (bool success, ) = msg.sender.call{value: amount}("");
+        if (!success) revert TransferFailed();
+    }
+
+    /*//////////////////////////////////////////////////////////////
                            ADMIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
@@ -285,6 +308,16 @@ contract GrimPool is IGrimPool, ReentrancyGuard {
     function setGrimSwapZK(address _grimSwapZK) external {
         if (msg.sender != owner) revert Unauthorized();
         grimSwapZK = _grimSwapZK;
+    }
+
+    /**
+     * @notice Set authorized router for releasing deposited ETH
+     * @param router Address of the router contract
+     * @param authorized Whether the router is authorized
+     */
+    function setAuthorizedRouter(address router, bool authorized) external {
+        if (msg.sender != owner) revert Unauthorized();
+        authorizedRouters[router] = authorized;
     }
 
     /**

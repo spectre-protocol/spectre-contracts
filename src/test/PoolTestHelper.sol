@@ -46,7 +46,7 @@ contract PoolTestHelper is IUnlockCallback {
         uint256 amount0,
         uint256 amount1,
         address from
-    ) external returns (BalanceDelta delta) {
+    ) external payable returns (BalanceDelta delta) {
         callbackData = abi.encode(
             CallbackAction.ADD_LIQUIDITY,
             abi.encode(key, tickLower, tickUpper, amount0, amount1, from)

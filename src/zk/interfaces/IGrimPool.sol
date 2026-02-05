@@ -50,4 +50,11 @@ interface IGrimPool {
      * @param nullifierHash The nullifier hash to mark
      */
     function markNullifierAsSpent(bytes32 nullifierHash) external;
+
+    /**
+     * @notice Release deposited ETH for a private swap
+     * @dev Only callable by authorized routers or GrimSwapZK hook
+     * @param amount Amount of ETH to release
+     */
+    function releaseForSwap(uint256 amount) external;
 }

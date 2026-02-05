@@ -162,6 +162,11 @@ contract GrimSwapZK is BaseHook, Ownable {
         SwapParams calldata /* params */,
         bytes calldata hookData
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+        // DUAL-MODE: If no hookData, this is a regular swap - pass through
+        if (hookData.length == 0) {
+            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        }
+
         // Decode ZK proof and public signals from hookData
         (
             uint256[2] memory pA,
@@ -251,8 +256,9 @@ contract GrimSwapZK is BaseHook, Ownable {
     ) internal override returns (bytes4, int128) {
         PendingSwap memory pending = pendingSwaps[sender];
 
+        // DUAL-MODE: If no pending swap, this is a regular swap - pass through
         if (!pending.initialized) {
-            revert SwapNotInitialized();
+            return (this.afterSwap.selector, 0);
         }
 
         // Determine output token and amount
